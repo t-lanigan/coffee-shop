@@ -10,13 +10,14 @@ from .auth.auth import AuthError, requires_auth
 app = Flask(__name__)
 setup_db(app)
 CORS(app)
+# Login: https://tylers-test.auth0.com/authorize?audience=coffee&response_type=token&client_id=c2N45IwUfzUSG4mFLQAgotZ2aOP73xy9&redirect_uri=https://127.0.0.1:8080/login-results
 
 '''
 @TODO uncomment the following line to initialize the datbase
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 '''
-# db_drop_and_create_all()
+db_drop_and_create_all()
 
 
 @app.route('/status/am-i-up', methods=['GET'])
@@ -54,7 +55,7 @@ def get_drinks():
 
 @app.route('/drinks-detail', methods=['GET'])
 @requires_auth('get:drinks-detail')
-def get_drinks_detailed():
+def get_drinks_detailed(request):
     """Get the drinks long decription.
         - a public endpoint
         - contain only the drink.short() data representation
@@ -83,21 +84,34 @@ def create_drinks(payload):
             where drink an array containing only the newly created drink
             or appropriate status code indicating reason for failure
     """
-    body = request.get_json()
-    drink = Drink(
-        title=body.get("title"),
-        recipe=body.get("recipe")
-    )
-    drink.insert()
-    return jsonify({
-        "success": True,
-        "drink": drink.long()
-    }), 201
+
+    try:
+        body = request.get_json()
+        recipe = body.get("recipe")
+        title = body.get("title")
+
+        if type(body.get("recipe")) is dict:
+            recipe = json.dumps([recipe])
+
+        else:
+            recipe = json.dumps(recipe)
+
+        drink = Drink(
+            title=title,
+            recipe=recipe
+        )
+        drink.insert()
+        return jsonify({
+            "success": True,
+            "drink": drink.long()
+        }), 201
+    except:
+        abort(422)
 
 
 @app.route("/drinks/<int:id>", methods=["PATCH"])
 @requires_auth("patch:drinks")
-def update_drinks(drink_id):
+def update_drinks(*args, **kwargs):
     """Edits an existing drink
 
     Arguments:
@@ -107,6 +121,7 @@ def update_drinks(drink_id):
         status_code int and response json -- {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
     """
+    drink_id = kwargs.get("id")
     body = request.get_json()
     drink = Drink.query.filter_by(id=drink_id).one_or_none()
 
@@ -130,7 +145,7 @@ def update_drinks(drink_id):
 
 @app.route("/drinks/<int:id>", methods=["DELETE"])
 @requires_auth("patch:drinks")
-def delete_drinks(drink_id):
+def delete_drinks(*args, **kwargs):
     """Deletes drink id, where <id> is the existing model id
 
     Arguments:
@@ -139,10 +154,12 @@ def delete_drinks(drink_id):
     Returns:
         status_code int, response json -- status code 200 and {"success": True, "delete": id} where id is the id of the deleted record
     """
+    drink_id = kwargs.get("id")
     drink = Drink.query.filter_by(id=drink_id).one_or_none()
+    print(drink)
     if not drink:
         return jsonify({
-            "success": True,
+            "success": False,
             "message": "No drink found for drink ID: {}".format(drink_id)
         }), 404
     drink.delete()
@@ -180,3 +197,12 @@ def unprocessible_entity_error(error):
         "message": "AuthError: {}".format(error.error)
     })
     return response, error.status_code
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    response = jsonify({
+        "success": False,
+        "message": "There was an internal service error: {}".format(error)
+    })
+    return response, 500

@@ -5,9 +5,9 @@ from jose import jwt
 from urllib.request import urlopen
 
 
-AUTH0_DOMAIN = 'udacity-fsnd.auth0.com'
+AUTH0_DOMAIN = 'tylers-test.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'dev'
+API_AUDIENCE = 'coffee'
 
 
 class AuthError(Exception):
@@ -115,24 +115,24 @@ def verify_decode_jwt(token):
         AuthError: [if it unable to parse the token
         AuthError: if it's unable to find appropriate key
     """
-    jsonurl = urlopen(f'{AUTH0_DOMAIN}.well-known/jwks.json')
+    jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
     jwks = json.loads(jsonurl.read())
     unverified_header = jwt.get_unverified_header(token)
     rsa_key = {}
-    if "kid" not in unverified_header:
+    if 'kid' not in unverified_header:
         raise AuthError({
-            "code": "invalid_header",
-            "description": "Authorization malformed."
+            'code': 'invalid_header',
+            'description': 'Authorization malformed.'
         }, 401)
 
-    for key in jwks["keys"]:
-        if key["kid"] == unverified_header["kid"]:
+    for key in jwks['keys']:
+        if key['kid'] == unverified_header['kid']:
             rsa_key = {
-                "kty": key["kty"],
-                "kid": key["kid"],
-                "use": key["use"],
-                "n": key["n"],
-                "e": key["e"]
+                'kty': key['kty'],
+                'kid': key['kid'],
+                'use': key['use'],
+                'n': key['n'],
+                'e': key['e']
             }
     if rsa_key:
         try:
@@ -141,30 +141,30 @@ def verify_decode_jwt(token):
                 rsa_key,
                 algorithms=ALGORITHMS,
                 audience=API_AUDIENCE,
-                issuer=AUTH0_DOMAIN
+                issuer='https://' + AUTH0_DOMAIN + '/'
             )
 
             return payload
 
         except jwt.ExpiredSignatureError:
             raise AuthError({
-                "code": "token_expired",
-                "description": "Token expired."
+                'code': 'token_expired',
+                'description': 'Token expired.'
             }, 401)
 
         except jwt.JWTClaimsError:
             raise AuthError({
-                "code": "invalid_claims",
-                "description": "Incorrect claims. Please, check the audience and issuer."
+                'code': 'invalid_claims',
+                'description': 'Incorrect claims. Please, check the audience and issuer.'
             }, 401)
         except Exception:
             raise AuthError({
-                "code": "invalid_header",
-                "description": "Unable to parse authentication token."
+                'code': 'invalid_header',
+                'description': 'Unable to parse authentication token.'
             }, 400)
     raise AuthError({
-        "code": "invalid_header",
-        "description": "Unable to find the appropriate key."
+        'code': 'invalid_header',
+                'description': 'Unable to find the appropriate key.'
     }, 400)
 
 
