@@ -16,7 +16,6 @@ CORS(app)
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 '''
-
 # db_drop_and_create_all()
 
 
@@ -36,16 +35,6 @@ def am_i_up():
 
 
 # ROUTES
-'''
-@TODO implement endpoint
-    GET /drinks
-        - a public endpoint
-        -contain only the drink.short() data representation
-    returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
-        or appropriate status code indicating reason for failure
-'''
-
-
 @app.route('/drinks', methods=['GET'])
 def get_drinks():
     '''Get the drinks short decription.
@@ -54,9 +43,6 @@ def get_drinks():
     Returns:
         status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
-    Permissions:
-        None
-
     '''
     response = jsonify({
         "drinks": [drink.short() for drink in Drink.query.all()],
@@ -66,26 +52,16 @@ def get_drinks():
     return response, 200
 
 
-'''
-@TODO implement endpoint
-    GET /drinks-detail
-        it should require the 'get:drinks-detail' permission
-        it should contain the drink.long() data representation
-    returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
-        or appropriate status code indicating reason for failure
-'''
-@app.route('/drinks', methods=['GET'])
+@app.route('/drinks-tail', methods=['GET'])
+@requires_auth('get:drinks-detail')
 def get_drinks_detailed():
-    '''Get the drinks long decription.
+    """Get the drinks long decription.
         - a public endpoint
-        -contain only the drink.short() data representation
+        - contain only the drink.short() data representation
     Returns:
-        status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
+        status_code int, response json -- {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
-    Permissions:
-        get:drinks-detail
-
-    '''
+    """
     response = jsonify({
         "drinks": [drink.long() for drink in Drink.query.all()],
         "success": True
@@ -94,40 +70,86 @@ def get_drinks_detailed():
     return response, 200
 
 
-'''
-@TODO implement endpoint
-    POST /drinks
-        it should create a new row in the drinks table
-        it should require the 'post:drinks' permission
-        it should contain the drink.long() data representation
-    returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the newly created drink
+@app.route("/drinks", methods=["POST"])
+@requires_auth("post:drinks")
+def create_drinks(payload):
+    """Adds a new drink to the database.
+
+    Arguments:
+        payload json -- the recipe for the drink.
+
+    Returns:
+        status_code int, response json -- status code 200 and json {"success": True, "drinks": drink}
+            where drink an array containing only the newly created drink
+            or appropriate status code indicating reason for failure
+    """
+    body = request.get_json()
+    drink = Drink(
+        title=body.get("title"),
+        recipe=body.get("recipe")
+    )
+    drink.insert()
+    return jsonify({
+        "success": True,
+        "drink": drink.long()
+    }), 201
+
+
+@app.route("/drinks/<int:id>", methods=["PATCH"])
+@requires_auth("patch:drinks")
+def update_drinks(drink_id):
+    """Edits an existing drink
+
+    Arguments:
+        drink_id int -- the drink id to edit
+
+    Returns:
+        status_code int and response json -- {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
-'''
+    """
+    body = request.get_json()
+    drink = Drink.query.filter_by(id=drink_id).one_or_none()
+
+    if not drink:
+        return jsonify({
+            "success": True,
+            "message": "Drink id: {} not found".format(drink_id)
+        }), 404
+
+    drink.recipe = body.get("recipe", drink.recipe)
+    drink.title = body.get("title", drink.title)
+    if isinstance(drink.recipe, list):
+        drink.recipe = json.dumps(drink.recipe)
+    drink.update()
+
+    return jsonify({
+        "success": True,
+        "drink": drink.long()
+    }), 200
 
 
-'''
-@TODO implement endpoint
-    PATCH /drinks/<id>
-        where <id> is the existing model id
-        it should respond with a 404 error if <id> is not found
-        it should update the corresponding row for <id>
-        it should require the 'patch:drinks' permission
-        it should contain the drink.long() data representation
-    returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
-        or appropriate status code indicating reason for failure
-'''
+@app.route("/drinks/<int:id>", methods=["DELETE"])
+@requires_auth("patch:drinks")
+def delete_drinks(drink_id):
+    """Deletes drink id, where <id> is the existing model id
 
+    Arguments:
+        drink_id int -- The ID of the drink to be deleted.
 
-'''
-@TODO implement endpoint
-    DELETE /drinks/<id>
-        where <id> is the existing model id
-        it should respond with a 404 error if <id> is not found
-        it should delete the corresponding row for <id>
-        it should require the 'delete:drinks' permission
-    returns status code 200 and json {"success": True, "delete": id} where id is the id of the deleted record
-        or appropriate status code indicating reason for failure
-'''
+    Returns:
+        status_code int, response json -- status code 200 and {"success": True, "delete": id} where id is the id of the deleted record
+    """
+    drink = Drink.query.filter_by(id=drink_id).one_or_none()
+    if not drink:
+        return jsonify({
+            "success": True,
+            "message": "No drink found for drink ID: {}".format(drink_id)
+        }), 404
+    drink.delete()
+    return jsonify({
+        "success": True,
+        "delete": drink_id
+    }), 200
 
 
 # Error Handling
