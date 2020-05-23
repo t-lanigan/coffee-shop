@@ -52,7 +52,7 @@ def get_drinks():
     return response, 200
 
 
-@app.route('/drinks-tail', methods=['GET'])
+@app.route('/drinks-detail', methods=['GET'])
 @requires_auth('get:drinks-detail')
 def get_drinks_detailed():
     """Get the drinks long decription.
