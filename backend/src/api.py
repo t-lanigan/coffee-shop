@@ -11,7 +11,6 @@ app = Flask(__name__)
 setup_db(app)
 CORS(app)
 # Login: https://tylers-test.auth0.com/authorize?audience=coffee&response_type=token&client_id=c2N45IwUfzUSG4mFLQAgotZ2aOP73xy9&redirect_uri=https://127.0.0.1:8080/login-results
-
 '''
 @TODO uncomment the following line to initialize the datbase
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
